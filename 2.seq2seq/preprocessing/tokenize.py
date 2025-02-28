@@ -1,97 +1,112 @@
 import os
 import pandas as pd
+from torchtext.vocab import build_vocab_from_iterator
 import pickle
-from transformers import T5Tokenizer
 
+def whitespace_tokenizer(text: str):
+    return text.split()
 class Tokenize:
-    def __init__(
-        self,
-        path,
-        source_lang,
-        target_lang,
-        tokenizer_name="google/mt5-small",
-        max_length=128
-    ):
+    def __init__(self, path, src_lang="eng", tgt_lang="min"):
         self.path = path
-        self.source_lang = source_lang
-        self.target_lang = target_lang
-        self.tokenizer = T5Tokenizer.from_pretrained(tokenizer_name)
-        self.max_length = max_length
+        self.src_lang = src_lang
+        self.tgt_lang = tgt_lang
+        self.src_tokenizer = whitespace_tokenizer
+        self.tgt_tokenizer = whitespace_tokenizer
+        self.special_tokens = ["<sos>", "<eos>", "<unk>", "<pad>"]
+        self.src_vocab = None
+        self.tgt_vocab = None
+        self.tp = os.path.join(self.path, f"{self.src_lang}_{self.tgt_lang}")
 
-    def load_data(self):
-        train = pd.read_csv(os.path.join(self.path, "train.csv"))
-        validation = pd.read_csv(os.path.join(self.path, "validation.csv"))
-        test = pd.read_csv(os.path.join(self.path, "test.csv"))
-        return {"train": train, "validation": validation, "test": test}
+    def _read(self):
+        train = pd.read_csv(os.path.join(self.tp, "train.csv"))
+        val   = pd.read_csv(os.path.join(self.tp, "validation.csv"))
+        test  = pd.read_csv(os.path.join(self.tp, "test.csv"))
+        return train, val, test
 
-    def _prepare_text_pairs(self, df):
-        source_texts = []
-        target_texts = []
+    def yield_tokens(self, data, col, is_source=True):
+        tokenizer = self.src_tokenizer if is_source else self.tgt_tokenizer
+        for text in data[col]:
+            yield tokenizer(str(text))
 
-        for idx, row in df.iterrows():
-            if row["text_1_lang"] == self.source_lang:
-                source_texts.append(row["text_1"])
-                target_texts.append(row["text_2"])
-            else:
-                source_texts.append(row["text_2"])
-                target_texts.append(row["text_1"])
-        return source_texts, target_texts
-    def _batch_tokenize(self, source_texts, target_texts):
-        prompts = [
-            f"translate {self.source_lang} to {self.target_lang}: {txt}"
-            for txt in source_texts
-        ]
-
-        # 1) Tokenize source (prompts)
-        model_inputs = self.tokenizer(
-            prompts,
-            max_length=self.max_length,
-            padding="max_length",
-            truncation=True
+    def build_vocab(self):
+        # Build from train set only
+        train, _, _ = self._read()
+        self.src_vocab = build_vocab_from_iterator(
+            self.yield_tokens(train, self.src_lang, is_source=True),
+            specials=self.special_tokens
         )
+        self.tgt_vocab = build_vocab_from_iterator(
+            self.yield_tokens(train, self.tgt_lang, is_source=False),
+            specials=self.special_tokens
+        )
+        # Set <unk> as default index
+        self.src_vocab.set_default_index(self.src_vocab["<unk>"])
+        self.tgt_vocab.set_default_index(self.tgt_vocab["<unk>"])
 
-        # 2) Tokenize targets
-        with self.tokenizer.as_target_tokenizer():
-            labels = self.tokenizer(
-                target_texts,
-                max_length=self.max_length,
-                padding="max_length",
-                truncation=True
-            )
-        
-        # 3) Replace pad_token_id with -100 in the labels
-        pad_token_id = self.tokenizer.pad_token_id
-        new_labels = []
-        for seq in labels["input_ids"]:
-            seq = [(-100 if token_id == pad_token_id else token_id) for token_id in seq]
-            new_labels.append(seq)
+    def tokenize_text(self, text, is_source=True):
+        tokenizer = self.src_tokenizer if is_source else self.tgt_tokenizer
+        tokens = tokenizer(str(text))
+        return ["<sos>"] + tokens + ["<eos>"]
 
-        model_inputs["labels"] = new_labels
+    def numericalize(self, text, is_source=True):
+        vocab = self.src_vocab if is_source else self.tgt_vocab
+        tokens = self.tokenize_text(text, is_source=is_source)
+        return [vocab[token] for token in tokens]
 
-        # 4) Build the final list of tokenized examples
-        tokenized_examples = []
-        for i in range(len(source_texts)):
-            tokenized_examples.append({
-                "input_ids": model_inputs["input_ids"][i],
-                "attention_mask": model_inputs["attention_mask"][i],
-                "labels": model_inputs["labels"][i],
-            })
+    def detokenize(self, indices, is_source=True):
+        vocab = self.src_vocab if is_source else self.tgt_vocab
+        itos = vocab.get_itos()  # index -> token
+        tokens = []
+        for idx in indices:
+            if idx < len(itos):
+                tokens.append(itos[idx])
+            else:
+                tokens.append("<unk>")  # out-of-range safety
+        if tokens and tokens[0] == "<sos>":
+            tokens = tokens[1:]
+        if tokens and tokens[-1] == "<eos>":
+            tokens = tokens[:-1]
+        return " ".join(tokens)
 
-        return tokenized_examples
+    def save_vocab(self, filename_src="src_vocab.pkl", filename_tgt="tgt_vocab.pkl"):
+        if self.src_vocab and self.tgt_vocab:
+            with open(os.path.join(self.tp, filename_src), "wb") as f:
+                pickle.dump(self.src_vocab, f)
+            with open(os.path.join(self.tp, filename_tgt), "wb") as f:
+                pickle.dump(self.tgt_vocab, f)
 
+    def load_vocab(self, filename_src="src_vocab.pkl", filename_tgt="tgt_vocab.pkl"):
+        with open(os.path.join(self.tp, filename_src), "rb") as f:
+            self.src_vocab = pickle.load(f)
+        with open(os.path.join(self.tp, filename_tgt), "rb") as f:
+            self.tgt_vocab = pickle.load(f)
 
-
-    def process_and_save(self, output_filename="tokenized_dataset.pkl"):
-        data_splits = self.load_data()
-        tokenized_data = {}
-        for split_name, df in data_splits.items():
-            print(f"Tokenizing '{split_name}' split with {len(df)} examples...")
-            source_texts, target_texts = self._prepare_text_pairs(df)
-            tokenized_dataset = self._batch_tokenize(source_texts, target_texts)
-            tokenized_data[split_name] = tokenized_dataset
-            print(f"  -> {len(tokenized_dataset)} examples tokenized.")
-        output_path = os.path.join(self.path, output_filename)
-        with open(output_path, "wb") as f:
-            pickle.dump(tokenized_data, f)
-        print(f"Tokenized dataset saved to: {output_path}")
-        return tokenized_data
+    def preprocess_and_save(self, out_file="preprocessed_data.pkl"):
+        if self.src_vocab is None or self.tgt_vocab is None:
+            self.build_vocab()
+        train_df, val_df, test_df = self._read()
+        train_pairs = []
+        for _, row in train_df.iterrows():
+            src_indices = self.numericalize(row[self.src_lang], is_source=True)
+            tgt_indices = self.numericalize(row[self.tgt_lang], is_source=False)
+            train_pairs.append((src_indices, tgt_indices))
+        val_pairs = []
+        for _, row in val_df.iterrows():
+            src_indices = self.numericalize(row[self.src_lang], is_source=True)
+            tgt_indices = self.numericalize(row[self.tgt_lang], is_source=False)
+            val_pairs.append((src_indices, tgt_indices))
+        test_pairs = []
+        for _, row in test_df.iterrows():
+            src_indices = self.numericalize(row[self.src_lang], is_source=True)
+            tgt_indices = self.numericalize(row[self.tgt_lang], is_source=False)
+            test_pairs.append((src_indices, tgt_indices))
+        data_dict = {
+            "train": train_pairs,
+            "validation": val_pairs,
+            "test": test_pairs,
+            "src_vocab": self.src_vocab,
+            "tgt_vocab": self.tgt_vocab
+        }
+        with open(os.path.join(self.tp, out_file), "wb") as f:
+            pickle.dump(data_dict, f)
+        print(f"[INFO] Preprocessed data saved to {os.path.join(self.tp, out_file)}")
