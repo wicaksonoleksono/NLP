@@ -38,10 +38,10 @@ def preprocess_data(dataframe, source_lang, target_lang, max_sent_len, normalize
     return source_sentences, target_sentences
 
 
-
-PAD_TOKEN = 0 
+PAD_TOKEN = 0
 SOS_TOKEN = 1
 EOS_TOKEN = 2
+UNK_TOKEN = 3
 ###########################
 # DICT PREPROC
 ###########################
@@ -50,8 +50,8 @@ class Dictionary:
         self.name = name
         self.word2index = {}
         self.word2count = {}
-        self.index2word = {PAD_TOKEN: "PAD", SOS_TOKEN: "SOS", EOS_TOKEN: "EOS"}
-        self.n_count = 3
+        self.index2word = {PAD_TOKEN: "PAD", SOS_TOKEN: "SOS", EOS_TOKEN: "EOS", UNK_TOKEN: "UNK" }
+        self.n_count = 4
     def add_sentence(self, sentence):
         for word in sentence.split(' '):
             self.add_word(word)
@@ -65,17 +65,15 @@ class Dictionary:
             self.word2count[word] += 1
 
 
-            
+
 def tokenize(sentence, dictionary, MAX_LENGTH=50):
     split_sentence = sentence.split(' ')
     token = [SOS_TOKEN]
-    # Convert each word to its corresponding index.
-    # Consider handling words not in the dictionary (e.g., with an UNK token)
-    token += [dictionary.word2index[word] for word in split_sentence]
+    # Use dictionary.word2index.get() to return UNK_TOKEN if word not found.
+    token += [dictionary.word2index.get(word, UNK_TOKEN) for word in split_sentence]
     token.append(EOS_TOKEN)
     token += [PAD_TOKEN] * (MAX_LENGTH - len(split_sentence))
     return token
-
 
 # ########################################################################
 # # Method to detokenize i.e. convert idx to words
@@ -92,3 +90,4 @@ def detokenize(x, vocab):
 
     words = " ".join(words)
     return words
+            
