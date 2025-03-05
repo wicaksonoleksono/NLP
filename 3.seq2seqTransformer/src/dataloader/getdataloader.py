@@ -18,13 +18,12 @@ def get_dataloaders(data_path, source_lang, target_lang, batch_size, device):
         input_dic = pickle.load(f)
     with open(output_dic_path, "rb") as f:
         output_dic = pickle.load(f)
-    
-    # 3. Preprocess the raw sentences (normalize and filter by length)
+
+    # this code is inconsistent why do i do  preprocess   while creating dataloader obj, im so dumb fix this later  maybe create a .pkl obj to save the preprop data. idk 
     train_src_raw, train_tgt_raw = utils.preprocess_data(train_df, source_lang, target_lang, max_sent_len, utils.normalizeString)
     valid_src_raw, valid_tgt_raw = utils.preprocess_data(valid_df, source_lang, target_lang, max_sent_len, utils.normalizeString)
     test_src_raw, test_tgt_raw   = utils.preprocess_data(test_df, source_lang, target_lang, max_sent_len, utils.normalizeString)
     
-    # 4. Tokenize each sentence using the appropriate dictionary
     train_src = [utils.tokenize(sentence, input_dic, max_sent_len) for sentence in train_src_raw]
     train_tgt = [utils.tokenize(sentence, output_dic, max_sent_len) for sentence in train_tgt_raw]
     

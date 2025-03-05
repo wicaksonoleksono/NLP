@@ -2,9 +2,9 @@ import torch
 from torch import Tensor
 from torch import nn
 
-from attention import MultiHeadAttention
-from pos_encode import PositionalEncoding
-from feedforward import FeedForwardLayer
+from .attention import MultiHeadAttention
+from .pos_encode import PositionalEncoding
+from .feedforward import FeedForwardLayer
 
 
 # ########################################################################

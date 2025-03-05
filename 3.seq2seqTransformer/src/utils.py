@@ -2,6 +2,7 @@ import pandas  as pd
 import os 
 import unicodedata
 import re
+# source : https://github.com/shashankag14/Transformer-for-Machine-Translation
 def _read(tp):
     train = pd.read_csv(os.path.join(tp, "train.csv"))
     val   = pd.read_csv(os.path.join(tp, "validation.csv"))
@@ -37,7 +38,6 @@ def preprocess_data(dataframe, source_lang, target_lang, max_sent_len, normalize
             target_sentences.append(tgt)
     return source_sentences, target_sentences
 
-
 PAD_TOKEN = 0
 SOS_TOKEN = 1
 EOS_TOKEN = 2
@@ -64,8 +64,6 @@ class Dictionary:
         else:
             self.word2count[word] += 1
 
-
-
 def tokenize(sentence, dictionary, MAX_LENGTH=50):
     split_sentence = sentence.split(' ')
     token = [SOS_TOKEN]
@@ -74,7 +72,6 @@ def tokenize(sentence, dictionary, MAX_LENGTH=50):
     token.append(EOS_TOKEN)
     token += [PAD_TOKEN] * (MAX_LENGTH - len(split_sentence))
     return token
-
 # ########################################################################
 # # Method to detokenize i.e. convert idx to words
 # input - List of idx of a sentence, Vocabulary to convert from idx2word
