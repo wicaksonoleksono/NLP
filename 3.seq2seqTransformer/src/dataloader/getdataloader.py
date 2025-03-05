@@ -6,14 +6,10 @@ from ._collate_fn import collate_fn
 import utils
 
 def get_dataloaders(data_path, source_lang, target_lang, batch_size, device):
-    # 1. Get raw data and max sentence length
     train_df, valid_df, test_df, max_sent_len = utils.get_data(data_path, source_lang, target_lang)
-    
-    # 2. Load the dictionaries (they should be stored as .pkl files)
     path_dic = os.path.join(data_path, f"{source_lang}_{target_lang}")
     input_dic_path = os.path.join(path_dic, "input_dic.pkl")
     output_dic_path = os.path.join(path_dic, "output_dic.pkl")
-    
     with open(input_dic_path, "rb") as f:
         input_dic = pickle.load(f)
     with open(output_dic_path, "rb") as f:

@@ -67,7 +67,6 @@ class Dictionary:
 def tokenize(sentence, dictionary, MAX_LENGTH=50):
     split_sentence = sentence.split(' ')
     token = [SOS_TOKEN]
-    # Use dictionary.word2index.get() to return UNK_TOKEN if word not found.
     token += [dictionary.word2index.get(word, UNK_TOKEN) for word in split_sentence]
     token.append(EOS_TOKEN)
     token += [PAD_TOKEN] * (MAX_LENGTH - len(split_sentence))
@@ -78,6 +77,7 @@ def tokenize(sentence, dictionary, MAX_LENGTH=50):
 # output - Sentence of words
 # It ignores any special tokens (EOS,SOS,PAD)
 # ########################################################################
+
 def detokenize(x, vocab):
     words = []
     for i in x:
