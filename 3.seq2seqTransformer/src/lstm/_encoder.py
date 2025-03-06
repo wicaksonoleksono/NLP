@@ -4,13 +4,11 @@ class Encoder(nn.Module):
         super().__init__()
         self.hidden_dim = hidden_dim
         self.n_layers = n_layers
-        
         self.embedding = nn.Embedding(
-            num_embeddings=input_dim,  # Fix here
+            num_embeddings=input_dim,
             embedding_dim=embed_dim,
             padding_idx=pad_idx
         )
-        
         self.lstm = nn.LSTM(
             input_size=embed_dim,
             hidden_size=hidden_dim,
