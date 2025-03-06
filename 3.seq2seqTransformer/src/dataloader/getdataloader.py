@@ -12,18 +12,13 @@ def get_dataloaders(data_path, source_lang, target_lang, batch_size, device):
     the train/valid/test sets, and returns DataLoaders.
     """
     train_df, valid_df, test_df, max_sent_len = utils.get_data(data_path, source_lang, target_lang)
-
-    # 1. Load the dictionary pickles that were created earlier
     path_dic = os.path.join(data_path, f"{source_lang}_{target_lang}")
     input_dic_path = os.path.join(path_dic, "input_dic.pkl")
     output_dic_path = os.path.join(path_dic, "output_dic.pkl")
-
     with open(input_dic_path, "rb") as f:
         input_dic = pickle.load(f)
     with open(output_dic_path, "rb") as f:
         output_dic = pickle.load(f)
-
-    # 2. Preprocess (normalize + filter length)
     train_src_raw, train_tgt_raw = utils.preprocess_data(
         train_df, source_lang, target_lang, max_sent_len, utils.normalizeString
     )

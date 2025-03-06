@@ -10,23 +10,15 @@ def create_dictionary(source_lang, target_lang, data_path):
     saves them to 'input_dic.pkl' and 'output_dic.pkl' once.
     """
     train_df, _, _, max_sent_len = utils.get_data(data_path, source_lang, target_lang)
-
-    # Preprocess the training data to get raw text
     source_sentences, target_sentences = utils.preprocess_data(
         train_df, source_lang, target_lang, max_sent_len, utils.normalizeString
     )
-
-    # Create dictionary objects
     input_dic = utils.Dictionary(source_lang)
     output_dic = utils.Dictionary(target_lang)
-
-    # Populate the dictionaries
     for sentence in source_sentences:
         input_dic.add_sentence(sentence)
     for sentence in target_sentences:
         output_dic.add_sentence(sentence)
-
-    # Make sure directory exists
     save_dir = os.path.join(data_path, f"{source_lang}_{target_lang}")
     os.makedirs(save_dir, exist_ok=True)
     # Save the dictionaries

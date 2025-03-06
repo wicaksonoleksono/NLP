@@ -5,7 +5,9 @@ import unicodedata
 import numpy as np
 import pandas as pd
 from collections import Counter
-
+import sentencepiece as spm
+import sentencepiece as spm
+import os
 # ------------------------------------------------------------------------
 # SPECIAL TOKENS
 # ------------------------------------------------------------------------
@@ -38,10 +40,15 @@ def unicodeToAscii(s):
         if unicodedata.category(c) != 'Mn'
     )
 
+# def normalizeString(s):
+#     s = unicodeToAscii(s.lower().strip())
+#     s = re.sub(r"([.!?])", r" \1", s)
+#     s = re.sub(r"[^a-zA-Z.!?]+", r" ", s)
+#     return s
+
 def normalizeString(s):
     s = unicodeToAscii(s.lower().strip())
-    s = re.sub(r"([.!?])", r" \1", s)
-    s = re.sub(r"[^a-zA-Z.!?]+", r" ", s)
+    s = re.sub(r"[^a-zA-Z ]+", " ", s)  # Remove ALL punctuation
     return s
 
 # ------------------------------------------------------------------------
@@ -50,13 +57,10 @@ def normalizeString(s):
 def preprocess_data(dataframe, source_lang, target_lang, max_sent_len, normalize_fn):
     source_sentences_all = dataframe[source_lang].tolist()
     target_sentences_all = dataframe[target_lang].tolist()
-
     source_normalized = list(map(normalize_fn, source_sentences_all))
     target_normalized = list(map(normalize_fn, target_sentences_all))
-
     source_sentences = []
     target_sentences = []
-
     for src, tgt in zip(source_normalized, target_normalized):
         src_tokens = src.split()
         tgt_tokens = tgt.split()
@@ -152,3 +156,7 @@ def get_bleu(hypotheses, reference):
     for hyp, ref in zip(hypotheses, reference):
         stats += np.array(bleu_stats(hyp, ref))
     return 100 * bleu(stats)
+
+
+
+
