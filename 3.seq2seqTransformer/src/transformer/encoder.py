@@ -56,8 +56,7 @@ class TransformerEncoder(nn.Module):
 	             num_heads ,
 	             dim_feedforward ,
 	             dropout ,
-	             device ,
-	             MAX_LENGTH=100):
+	             device ):
 		super().__init__()
 		self.device = device
 		self.dim_model = dim_model
@@ -75,9 +74,7 @@ class TransformerEncoder(nn.Module):
 
 	def forward(self, src, mask):
 		input_size = src.shape[1]
-
 		src = self.dropout((self.word_embedding(src) * self.coefficient)+ self.position_encoding(input_size, self.dim_model, self.device))
-
 		for layer in self.layers:
 			src = layer(src, mask)
 		return src
