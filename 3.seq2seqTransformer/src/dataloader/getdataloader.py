@@ -7,10 +7,6 @@ from ._dataset import CustomDataset
 from ._collate_fn import collate_fn
 
 def get_dataloaders(data_path, source_lang, target_lang, batch_size, device):
-    """
-    Loads pre-saved dictionaries from disk, preprocesses & tokenizes
-    the train/valid/test sets, and returns DataLoaders.
-    """
     train_df, valid_df, test_df, max_sent_len = utils.get_data(data_path, source_lang, target_lang)
     path_dic = os.path.join(data_path, f"{source_lang}_{target_lang}")
     input_dic_path = os.path.join(path_dic, "input_dic.pkl")
@@ -28,7 +24,6 @@ def get_dataloaders(data_path, source_lang, target_lang, batch_size, device):
     test_src_raw, test_tgt_raw = utils.preprocess_data(
         test_df, source_lang, target_lang, max_sent_len, utils.normalizeString
     )
-    # 3. Tokenize using the loaded dictionaries
     train_src = [utils.tokenize(sentence, input_dic, max_sent_len) for sentence in train_src_raw]
     train_tgt = [utils.tokenize(sentence, output_dic, max_sent_len) for sentence in train_tgt_raw]
 
@@ -39,8 +34,12 @@ def get_dataloaders(data_path, source_lang, target_lang, batch_size, device):
     test_tgt  = [utils.tokenize(sentence, output_dic, max_sent_len) for sentence in test_tgt_raw]
     # 4. Create Dataset objects
     train_dataset = CustomDataset({'src': train_src, 'tgt': train_tgt})
+    print("Number of examples in train_dataset,train origin,train_raw:", len(train_dataset),len(train_src),len(train_src_raw))
     valid_dataset = CustomDataset({'src': valid_src, 'tgt': valid_tgt})
+    print("Number of examples in valid_dataset:", len(valid_dataset))
     test_dataset  = CustomDataset({'src': test_src, 'tgt': test_tgt})
+    print("Number of examples in test_dataset:", len(test_dataset))
+
     # 5. Create DataLoaders
     train_dataloader = DataLoader(
         train_dataset,

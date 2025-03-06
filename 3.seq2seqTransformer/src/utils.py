@@ -15,7 +15,7 @@ PAD_TOKEN = 0
 SOS_TOKEN = 1
 EOS_TOKEN = 2
 UNK_TOKEN = 3
-MAX_SENT_LEN = 50
+MAX_SENT_LEN = 100
 
 # ------------------------------------------------------------------------
 # Reading Data
@@ -39,18 +39,25 @@ def unicodeToAscii(s):
         c for c in unicodedata.normalize("NFD", s)
         if unicodedata.category(c) != 'Mn'
     )
-
 # def normalizeString(s):
 #     s = unicodeToAscii(s.lower().strip())
 #     s = re.sub(r"([.!?])", r" \1", s)
 #     s = re.sub(r"[^a-zA-Z.!?]+", r" ", s)
 #     return s
+# def normalizeString(s):
+#     s = unicodeToAscii(s.lower().strip())
+#     s = re.sub(r"[^a-zA-Z ]+", " ", s)  # Remove ALL punctuation
+#     return s
 
 def normalizeString(s):
-    s = unicodeToAscii(s.lower().strip())
-    s = re.sub(r"[^a-zA-Z ]+", " ", s)  # Remove ALL punctuation
+    s = s.lower().strip()
+    s = ''.join(
+        c for c in unicodedata.normalize("NFD", s)
+        if unicodedata.category(c) != 'Mn'
+    )
+    s = re.sub(r"[^a-zA-Z'\s]+", "", s)
+    s = re.sub(r"\s+", " ", s).strip()
     return s
-
 # ------------------------------------------------------------------------
 # Preprocessing CSV data
 # ------------------------------------------------------------------------
