@@ -1,35 +1,62 @@
-import pandas  as pd 
-import os 
-import unicodedata
+import os
 import re
-# source : https://github.com/shashankag14/Transformer-for-Machine-Translation
-def _read(tp):
-    train = pd.read_csv(os.path.join(tp, "train.csv"))
-    val   = pd.read_csv(os.path.join(tp, "validation.csv"))
-    test  = pd.read_csv(os.path.join(tp, "test.csv"))
-    return train, val, test
-def get_data(tp,src_lang,tgt_lang,max_sent_len=50):
-    train,val,test= _read(f"{tp}/{src_lang}_{tgt_lang}/")
-    return train,val,test,max_sent_len
+import math
+import unicodedata
+import numpy as np
+import pandas as pd
+from collections import Counter
 
+# ------------------------------------------------------------------------
+# SPECIAL TOKENS
+# ------------------------------------------------------------------------
+PAD_TOKEN = 0
+SOS_TOKEN = 1
+EOS_TOKEN = 2
+UNK_TOKEN = 3
+MAX_SENT_LEN = 50
+
+# ------------------------------------------------------------------------
+# Reading Data
+# ------------------------------------------------------------------------
+def _read(folder_path):
+    train = pd.read_csv(os.path.join(folder_path, "train.csv"))
+    val   = pd.read_csv(os.path.join(folder_path, "validation.csv"))
+    test  = pd.read_csv(os.path.join(folder_path, "test.csv"))
+    return train, val, test
+
+def get_data(base_path, src_lang, tgt_lang, max_sent_len=MAX_SENT_LEN):
+    folder_path = os.path.join(base_path, f"{src_lang}_{tgt_lang}")
+    train, val, test = _read(folder_path)
+    return train, val, test, max_sent_len
+
+# ------------------------------------------------------------------------
+# Normalization
+# ------------------------------------------------------------------------
 def unicodeToAscii(s):
     return ''.join(
-        c for c in unicodedata.normalize("NFD",s)
-        if unicodedata.category(c) != 'mn'
+        c for c in unicodedata.normalize("NFD", s)
+        if unicodedata.category(c) != 'Mn'
     )
+
 def normalizeString(s):
-    s =unicodeToAscii(s.lower().strip())
+    s = unicodeToAscii(s.lower().strip())
     s = re.sub(r"([.!?])", r" \1", s)
     s = re.sub(r"[^a-zA-Z.!?]+", r" ", s)
     return s
 
+# ------------------------------------------------------------------------
+# Preprocessing CSV data
+# ------------------------------------------------------------------------
 def preprocess_data(dataframe, source_lang, target_lang, max_sent_len, normalize_fn):
     source_sentences_all = dataframe[source_lang].tolist()
     target_sentences_all = dataframe[target_lang].tolist()
+
     source_normalized = list(map(normalize_fn, source_sentences_all))
     target_normalized = list(map(normalize_fn, target_sentences_all))
+
     source_sentences = []
     target_sentences = []
+
     for src, tgt in zip(source_normalized, target_normalized):
         src_tokens = src.split()
         tgt_tokens = tgt.split()
@@ -38,23 +65,27 @@ def preprocess_data(dataframe, source_lang, target_lang, max_sent_len, normalize
             target_sentences.append(tgt)
     return source_sentences, target_sentences
 
-PAD_TOKEN = 0
-SOS_TOKEN = 1
-EOS_TOKEN = 2
-UNK_TOKEN = 3
-###########################
-# DICT PREPROC
-###########################
+# ------------------------------------------------------------------------
+# Dictionary class
+# ------------------------------------------------------------------------
 class Dictionary:
     def __init__(self, name):
         self.name = name
         self.word2index = {}
         self.word2count = {}
-        self.index2word = {PAD_TOKEN: "PAD", SOS_TOKEN: "SOS", EOS_TOKEN: "EOS", UNK_TOKEN: "UNK" }
-        self.n_count = 4
+        # The next 4 indices are reserved for PAD, SOS, EOS, UNK
+        self.index2word = {
+            PAD_TOKEN: "PAD",
+            SOS_TOKEN: "SOS",
+            EOS_TOKEN: "EOS",
+            UNK_TOKEN: "UNK"
+        }
+        self.n_count = 4  # so that the first 'real' word is index=4
+
     def add_sentence(self, sentence):
-        for word in sentence.split(' '):
+        for word in sentence.split():
             self.add_word(word)
+
     def add_word(self, word):
         if word not in self.word2index:
             self.word2index[word] = self.n_count
@@ -64,27 +95,60 @@ class Dictionary:
         else:
             self.word2count[word] += 1
 
-def tokenize(sentence, dictionary, MAX_LENGTH=50):
-    split_sentence = sentence.split(' ')
+# ------------------------------------------------------------------------
+# Tokenize & Detokenize
+# ------------------------------------------------------------------------
+def tokenize(sentence, dictionary, max_length=MAX_SENT_LEN):
+    split_sentence = sentence.split()
     token = [SOS_TOKEN]
     token += [dictionary.word2index.get(word, UNK_TOKEN) for word in split_sentence]
     token.append(EOS_TOKEN)
-    token += [PAD_TOKEN] * (MAX_LENGTH - len(split_sentence))
+
+    # pad if necessary
+    num_pad = max_length - len(split_sentence)
+    if num_pad > 0:
+        token += [PAD_TOKEN] * num_pad
     return token
-# ########################################################################
-# # Method to detokenize i.e. convert idx to words
-# input - List of idx of a sentence, Vocabulary to convert from idx2word
-# output - Sentence of words
-# It ignores any special tokens (EOS,SOS,PAD)
-# ########################################################################
 
-def detokenize(x, vocab):
+def detokenize(token_ids, vocab):
     words = []
-    for i in x:
-        word = vocab.index2word[i]
-        if word != 'EOS' and word != 'SOS' and word != 'PAD':
-            words.append(word)
+    for tid in token_ids:
+        w = vocab.index2word[tid]
+        if w not in ["EOS", "SOS", "PAD"]:
+            words.append(w)
+    return " ".join(words)
 
-    words = " ".join(words)
-    return words
-            
+# ------------------------------------------------------------------------
+# BLEU-Score
+# ------------------------------------------------------------------------
+def bleu_stats(hypothesis, reference):
+    stats = []
+    stats.append(len(hypothesis))
+    stats.append(len(reference))
+    for n in range(1, 5):
+        s_ngrams = Counter(
+            [tuple(hypothesis[i:i + n]) for i in range(len(hypothesis) + 1 - n)]
+        )
+        r_ngrams = Counter(
+            [tuple(reference[i:i + n]) for i in range(len(reference) + 1 - n)]
+        )
+
+        stats.append(max([sum((s_ngrams & r_ngrams).values()), 0]))
+        stats.append(max([len(hypothesis) + 1 - n, 0]))
+    return stats
+
+def bleu(stats):
+    if any(x == 0 for x in stats):
+        return 0
+    (c, r) = stats[:2]
+    log_bleu_prec = sum(
+        [math.log(float(x) / y) for x, y in zip(stats[2::2], stats[3::2])]
+    ) / 4.0
+    return math.exp(min([0, 1 - float(r) / c]) + log_bleu_prec)
+
+def get_bleu(hypotheses, reference):
+    """Get validation BLEU score for dev set."""
+    stats = np.zeros(10,)
+    for hyp, ref in zip(hypotheses, reference):
+        stats += np.array(bleu_stats(hyp, ref))
+    return 100 * bleu(stats)

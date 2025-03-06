@@ -1,30 +1,40 @@
 import pickle
 import utils
-
+import os
 # ########################################################################
 # # Membuat dictionary
 ########################################################################
 def create_dictionary(source_lang, target_lang, data_path):
-    train, _, _, max_sent_len = utils.get_data(data_path, source_lang, target_lang)
+    """
+    Builds the dictionary from the training CSV only,
+    saves them to 'input_dic.pkl' and 'output_dic.pkl' once.
+    """
+    train_df, _, _, max_sent_len = utils.get_data(data_path, source_lang, target_lang)
+
+    # Preprocess the training data to get raw text
     source_sentences, target_sentences = utils.preprocess_data(
-        train, source_lang, target_lang, max_sent_len, utils.normalizeString
+        train_df, source_lang, target_lang, max_sent_len, utils.normalizeString
     )
+
+    # Create dictionary objects
     input_dic = utils.Dictionary(source_lang)
     output_dic = utils.Dictionary(target_lang)
+
+    # Populate the dictionaries
     for sentence in source_sentences:
         input_dic.add_sentence(sentence)
     for sentence in target_sentences:
         output_dic.add_sentence(sentence)
-    # Save the dictionaries.
-    save_dictionary(data_path, input_dic, source_lang, target_lang, input=True)
-    save_dictionary(data_path, output_dic, source_lang, target_lang, input=False)
-    
-    return input_dic, output_dic, source_sentences, target_sentences
 
-def save_dictionary(tp, dictionary, src, tgt, input=True):
-    if input:
-        with open(f'{tp}/{src}_{tgt}/input_dic.pkl', 'wb') as f:
-            pickle.dump(dictionary, f, pickle.HIGHEST_PROTOCOL)
-    else:
-        with open(f'{tp}/{src}_{tgt}/output_dic.pkl', 'wb') as f:
-            pickle.dump(dictionary, f, pickle.HIGHEST_PROTOCOL)
+    # Make sure directory exists
+    save_dir = os.path.join(data_path, f"{source_lang}_{target_lang}")
+    os.makedirs(save_dir, exist_ok=True)
+    # Save the dictionaries
+    save_dictionary(save_dir, input_dic, input=True)
+    save_dictionary(save_dir, output_dic, input=False)
+
+    return input_dic, output_dic, source_sentences, target_sentences
+def save_dictionary(folder_path, dictionary, input=True):
+    filename = "input_dic.pkl" if input else "output_dic.pkl"
+    with open(os.path.join(folder_path, filename), 'wb') as f:
+        pickle.dump(dictionary, f, pickle.HIGHEST_PROTOCOL)

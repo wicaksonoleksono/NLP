@@ -96,6 +96,6 @@ class TransformerDecoder(nn.Module):
         for layer in self.layers:
             target,attention = layer(target,encoded_input,target_mask,input_mask)
 
-            output = self.linear(target)
-            return output,attention
+        output = self.linear(target)
+        return output,attention
         
