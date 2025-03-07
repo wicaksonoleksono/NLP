@@ -15,15 +15,25 @@ PAD_TOKEN = 0
 SOS_TOKEN = 1
 EOS_TOKEN = 2
 UNK_TOKEN = 3
-MAX_SENT_LEN = 100
+MAX_SENT_LEN = 107
 
 # ------------------------------------------------------------------------
 # Reading Data
 # ------------------------------------------------------------------------
+def get_max_lengths(df, name):
+    max_min = df["min"].astype(str).str.split().str.len().max()
+    max_eng = df["eng"].astype(str).str.split().str.len().max()
+    print(f"{name} - Max 'min' sentence length: {max_min}")
+    print(f"{name} - Max 'eng' sentence length: {max_eng}")
+
+
 def _read(folder_path):
     train = pd.read_csv(os.path.join(folder_path, "train.csv"))
     val   = pd.read_csv(os.path.join(folder_path, "validation.csv"))
     test  = pd.read_csv(os.path.join(folder_path, "test.csv"))
+    get_max_lengths(train,"TrainData")
+    get_max_lengths(val,"TestData")
+    get_max_lengths(test,"ValidData")
     return train, val, test
 
 def get_data(base_path, src_lang, tgt_lang, max_sent_len=MAX_SENT_LEN):

@@ -1,34 +1,50 @@
 from torch import nn
 import torch 
 class Seq2Seq(nn.Module):
-    def __init__(self, encoder, decoder, device='cpu'):
+    def __init__(self, encoder, decoder, device, enc_hidden_size, dec_hidden_size):
+        """
+        enc_hidden_size: hidden size used in the encoder (before doubling due to bidirectionality)
+        dec_hidden_size: hidden size used in the decoder
+        """
         super().__init__()
         self.encoder = encoder
         self.decoder = decoder
         self.device = device
-    def forward(self, src, tgt, teacher_forcing_ratio=0.5):
-        batch_size, tgt_len = tgt.shape
-        encoder_outputs, hidden_enc = self.encoder(src)
-        hidden_dec = nn.functional.relu(
-            nn.Linear(hidden_enc.size(2), self.decoder.hidden_size, bias=False)(hidden_enc[0])
-        )
-        hidden_dec = hidden_dec.unsqueeze(0)  # shape: (1, batch, hidden_size)
-        logits_list = []
+        # The encoder's hidden state is (num_layers, batch, 2 * enc_hidden_size)
+        # If 2*enc_hidden_size doesn't match dec_hidden_size, create a bridge to transform it.
+        if (enc_hidden_size * 2) != dec_hidden_size:
+            self.bridge = nn.Linear(enc_hidden_size * 2, dec_hidden_size)
+        else:
+            self.bridge = None
 
-        # Let's say the first input to decoder is tgt[:,0] (like <sos> token)
-        dec_input = tgt[:, 0].unsqueeze(1)  # shape: (batch, 1)
+    def forward(self, src, tgt, teacher_forcing_ratio=0.5):
+        """
+        src: (batch, src_len)
+        tgt: (batch, tgt_len)
+        teacher_forcing_ratio: probability to use ground truth token as the next input
+        """
+        batch_size = src.shape[0]
+        tgt_len = tgt.shape[1]
+        output_vocab_size = self.decoder.fc_out.out_features
+
+        # Tensor to hold predictions
+        outputs = torch.zeros(batch_size, tgt_len, output_vocab_size).to(self.device)
+        # Encode the source sequence
+        encoder_outputs, hidden_enc = self.encoder(src)
+        # hidden_enc shape: (num_layers, batch, 2 * hidden_size)
+        dec_hidden = hidden_enc
+        # If needed, use the bridge to convert the encoder's hidden state dimension
+        if self.bridge is not None:
+            dec_hidden = torch.tanh(self.bridge(dec_hidden))
+        # The first token is assumed to be the <sos> (start of sequence) token
+        input_token = tgt[:, 0].unsqueeze(1)  # (batch, 1)
+        # Decode token by token
         for t in range(1, tgt_len):
-            # Pass one token at a time
-            output, hidden_dec = self.decoder(dec_input, hidden_dec)
-            # output shape: (batch, 1, tgt_vocab_size)
-            logits_list.append(output)
-            # Determine next input to the decoder
-            if torch.rand(1).item() < teacher_forcing_ratio:
-                # Use teacher forcing: feed the ground truth
-                dec_input = tgt[:, t].unsqueeze(1)
-            else:
-                # Use the predicted token
-                pred_token = output.argmax(dim=2)  # (batch, 1)
-                dec_input = pred_token
-        logits = torch.cat(logits_list, dim=1)  # (batch, tgt_len-1, vocab_size)
-        return logits
+            output, dec_hidden = self.decoder(input_token, dec_hidden)
+            outputs[:, t, :] = output.squeeze(1)
+            # Decide whether to use teacher forcing
+            teacher_force = torch.rand(1).item() < teacher_forcing_ratio
+            # Get the highest predicted token from our predictions
+            top1 = output.argmax(2)
+            input_token = tgt[:, t].unsqueeze(1) if teacher_force else top1
+        return outputs,dec_hidden

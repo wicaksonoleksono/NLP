@@ -32,6 +32,43 @@ def translate_sentence(token_ids, input_dic, output_dic, model, device, max_len=
     translation_tokens = [idx for idx in predicted_tokens[1:] if idx not in ignore_tokens]
     translation_str = ' '.join(output_dic.index2word[idx] for idx in translation_tokens)
     return translation_str, predicted_tokens
+def translate_sentence_gru(token_ids, input_dic, output_dic, model, device, max_len=50):
+
+    model.eval()
+    # 1) Convert source token ids into a tensor (shape: [1, src_len]) and encode
+    src_tensor = torch.LongTensor(token_ids).unsqueeze(0).to(device)
+    with torch.no_grad():
+        encoder_outputs, encoder_hidden = model.encoder(src_tensor)
+    
+    # 2) Prepare the initial hidden state for the decoder.
+    # If a bridge exists to match the dimension (from 2*enc_hidden to dec_hidden), apply it.
+    if hasattr(model, "bridge") and model.bridge is not None:
+        dec_hidden = torch.tanh(model.bridge(encoder_hidden))
+    else:
+        dec_hidden = encoder_hidden
+
+    # 3) Start decoding with the SOS token.
+    predicted_tokens = [utils.SOS_TOKEN]  # Replace with your actual SOS token index.
+    input_token = torch.LongTensor([utils.SOS_TOKEN]).unsqueeze(0).to(device)  # shape: (1, 1)
+
+    for _ in range(max_len):
+        with torch.no_grad():
+            # decoder takes the current token and hidden state and outputs a prediction and updated hidden state.
+            output, dec_hidden = model.decoder(input_token, dec_hidden)
+        # output shape: (1, 1, vocab_size) --> choose the token with highest probability.
+        next_token = output.argmax(dim=-1).item()
+        predicted_tokens.append(next_token)
+        if next_token == utils.EOS_TOKEN:  # Replace with your EOS token index.
+            break
+        # Prepare the next input token for the decoder.
+        input_token = torch.LongTensor([next_token]).unsqueeze(0).to(device)
+
+    # 4) Convert predicted token indices into words.
+    ignore_tokens = {utils.SOS_TOKEN, utils.EOS_TOKEN, utils.PAD_TOKEN}  # adjust as needed
+    translation_tokens = [idx for idx in predicted_tokens if idx not in ignore_tokens]
+    translation_str = ' '.join(output_dic.index2word[idx] for idx in translation_tokens)
+    
+    return translation_str, predicted_tokens
 
 
 def translate_sentence_beam(
