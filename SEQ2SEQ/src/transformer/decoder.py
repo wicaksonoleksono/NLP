@@ -43,7 +43,7 @@ class TransformerDecoderLayer(nn.Module):
         # Encoder-decoder self attn 
 
         attention_2,attention = self.attn_2(attention_1_norm,encoded_input,encoded_input,input_mask) # Input Norm baru, 
-        attention_2_norm = self.norm_2(target+self.dropout(attention_2))
+        attention_2_norm = self.norm_2(attention_1_norm + self.dropout(attention_2))
 
         # Forward FFN
         forward = self.feed_forward(attention_2_norm)

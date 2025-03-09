@@ -11,7 +11,6 @@ class SkipGramModel:
     def _softmax(self, x):
         exp_x = np.exp(x - np.max(x))
         return exp_x / exp_x.sum()
-
     def forward(self, one_hot_vector):
         hidden_layer = np.dot(one_hot_vector, self.W1)  # Shape: (embedding_dim,)
         output_layer = np.dot(hidden_layer, self.W2)    # Shape: (vocab_size,)
@@ -19,7 +18,6 @@ class SkipGramModel:
         if np.isnan(output_layer).any() or np.isinf(output_layer).any():
             raise ValueError("Softmax output contains NaN or Inf.")
         return hidden_layer, output_layer
-
     def backward(self, one_hot_vector, target_vector, learning_rate=0.1, clip_value=1.0):
         hidden_layer, output_layer = self.forward(one_hot_vector)
         error = target_vector - output_layer  # Shape: (vocab_size,)
@@ -46,9 +44,3 @@ class SkipGramModel:
         self.W1 = data['W1']
         self.W2 = data['W2']
         print(f"Model loaded from {file_path}")
-
-# Example: Initialize and load the model
-vocab_size = 10000  # Replace with your actual vocab size
-embedding_dim = 300  # Replace with your actual embedding dimension
-model = SkipGramModel(vocab_size, embedding_dim)
-model.load('skipgram_model.npz')

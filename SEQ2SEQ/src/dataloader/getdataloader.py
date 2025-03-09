@@ -32,15 +32,12 @@ def get_dataloaders(data_path, source_lang, target_lang, batch_size, device):
 
     test_src  = [utils.tokenize(sentence, input_dic, max_sent_len) for sentence in test_src_raw]
     test_tgt  = [utils.tokenize(sentence, output_dic, max_sent_len) for sentence in test_tgt_raw]
-    # 4. Create Dataset objects
     train_dataset = CustomDataset({'src': train_src, 'tgt': train_tgt})
     print("Number of examples in train_dataset,train origin,train_raw:", len(train_dataset),len(train_src),len(train_src_raw))
     valid_dataset = CustomDataset({'src': valid_src, 'tgt': valid_tgt})
     print("Number of examples in valid_dataset:", len(valid_dataset))
     test_dataset  = CustomDataset({'src': test_src, 'tgt': test_tgt})
     print("Number of examples in test_dataset:", len(test_dataset))
-
-    # 5. Create DataLoaders
     train_dataloader = DataLoader(
         train_dataset,
         batch_size=batch_size,
@@ -53,5 +50,4 @@ def get_dataloaders(data_path, source_lang, target_lang, batch_size, device):
         shuffle=False,
         collate_fn=collate_fn
     )
-    # (You can also create a test_dataloader if needed)
     return train_dataloader, valid_dataloader, test_dataset

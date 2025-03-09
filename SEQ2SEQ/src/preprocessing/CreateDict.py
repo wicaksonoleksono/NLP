@@ -30,3 +30,6 @@ def save_dictionary(folder_path, dictionary, input=True):
     filename = "input_dic.pkl" if input else "output_dic.pkl"
     with open(os.path.join(folder_path, filename), 'wb') as f:
         pickle.dump(dictionary, f, pickle.HIGHEST_PROTOCOL)
+
+
+

@@ -19,10 +19,9 @@ class MultiHeadAttention(nn.Module):
 		self.linear = nn.Linear(dim_model, dim_model)
 
 		self.dropout = nn.Dropout(dropout)
-
 	def scaled_dot_product_attn(self, q, k, v, mask):
 		N = q.shape[0]
-		scale = (self.dim_model ** 0.5)
+		scale = (self.head_dim ** 0.5)
 		temp = torch.matmul(q, k.permute(0, 1, 3, 2)) / scale
 		if mask is not None:
 			temp = temp.masked_fill(mask == 0, -1e10)
@@ -31,6 +30,7 @@ class MultiHeadAttention(nn.Module):
 		attention = attention.permute(0, 2, 1, 3).contiguous()
 		attention = attention.view(N, -1, self.dim_model)
 		return attention, softmax_out
+
 	def forward(self, query, key, value, mask=None):
 		N = query.shape[0]
 		query = self.q(query)

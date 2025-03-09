@@ -8,7 +8,6 @@ class FeedForwardLayer(nn.Module):
         self.ff_layer = nn.Sequential(
             nn.Linear(hidden_size, ff_size),
             nn.ReLU(),
-
             nn.Dropout(dropout),
             nn.Linear(ff_size, hidden_size)
         )
