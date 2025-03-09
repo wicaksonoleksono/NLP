@@ -1,11 +1,8 @@
 import utils 
 import torch
 import heapq
-
-
-
+import utils_subword
 def translate_sentence_gru(token_ids, input_dic, output_dic, model, device, max_len=50):
-
     model.eval()
     src_tensor = torch.LongTensor(token_ids).unsqueeze(0).to(device)
     with torch.no_grad():
@@ -49,8 +46,6 @@ def translate_sentence(token_ids, input_dic, output_dic, model, device, max_len=
         predicted_tokens.append(next_token)
         if next_token == utils.EOS_TOKEN:
             break
-
-    # Use the provided detokenize function to convert token IDs to a string.
     translation_str = utils.detokenize(predicted_tokens, output_dic)
     return translation_str, predicted_tokens
 
@@ -82,8 +77,29 @@ def translate_sentence_beam(token_ids, input_dic, output_dic, model, device, max
         beam = sorted(candidates, key=lambda x: x[1], reverse=True)[:beam_width]
         if all(seq[-1] == utils.EOS_TOKEN for seq, _ in beam):
             break
-
-    # Choose the best sequence from the beam.
     best_seq, best_score = beam[0]
     translation_str = utils.detokenize(best_seq, output_dic)
     return translation_str, best_seq
+
+def translate_sentence_piece(token_ids, sp, model, device, max_len=utils.MAX_SENT_LEN):
+    model.eval()
+    input_tensor = torch.LongTensor(token_ids).unsqueeze(0).to(device)
+    src_mask = model.make_input_mask(input_tensor)
+    with torch.no_grad():
+        memory = model.encoder(input_tensor, src_mask)
+        
+    predicted_tokens = [utils.SOS_TOKEN]
+    for _ in range(max_len):
+        tgt_tensor = torch.LongTensor(predicted_tokens).unsqueeze(0).to(device)
+        tgt_mask = model.make_target_mask(tgt_tensor)
+        with torch.no_grad():
+            output, _ = model.decoder(tgt_tensor, memory, tgt_mask, src_mask)
+            
+        next_token = output[0, -1].argmax(dim=-1).item()
+        predicted_tokens.append(next_token)
+        if next_token == utils.EOS_TOKEN:
+            break
+
+    # Use SentencePiece detokenization to convert token IDs to a sentence.
+    translation_str = utils_subword.sp_detokenize_with_specials(sp, predicted_tokens)
+    return translation_str, predicted_tokens

@@ -5,10 +5,7 @@ import os
 # # Membuat dictionary
 ########################################################################
 def create_dictionary(source_lang, target_lang, data_path):
-    """
-    Builds the dictionary from the training CSV only,
-    saves them to 'input_dic.pkl' and 'output_dic.pkl' once.
-    """
+
     train_df, _, _, max_sent_len = utils.get_data(data_path, source_lang, target_lang)
     source_sentences, target_sentences = utils.preprocess_data(
         train_df, source_lang, target_lang, max_sent_len, utils.normalizeString

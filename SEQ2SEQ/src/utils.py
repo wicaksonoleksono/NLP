@@ -5,7 +5,7 @@ import unicodedata
 import numpy as np
 import pandas as pd
 from collections import Counter
-import sentencepiece as spm
+import sentencepiece as sp
 import matplotlib.pyplot as plt
 
 # ------------------------------------------------------------------------
@@ -88,7 +88,6 @@ def preprocess_data(dataframe, source_lang, target_lang, max_sent_len, normalize
             source_sentences.append(src)
             target_sentences.append(tgt)
     return source_sentences, target_sentences
-
 # ------------------------------------------------------------------------
 # Dictionary class
 # ------------------------------------------------------------------------
@@ -177,7 +176,7 @@ def get_bleu(hypotheses, reference):
 
 
 
-def plot_loss(atl, avl, save_dir):
+def plot_loss(atl, avl, save_dir,name):
     """
     Plots training vs. validation loss and saves the figure to save_dir.
 
@@ -202,60 +201,8 @@ def plot_loss(atl, avl, save_dir):
     plt.grid(True)
 
     # Save the plot to SAVE_DIR
-    plot_path = os.path.join(save_dir, 'loss_plot.png')
+    plot_path = os.path.join(save_dir, f'{name}.png')
     plt.savefig(plot_path)
     plt.close()
     print(f"Loss plot saved to {plot_path}")
 
-# ------------------------------------------------------------------------
-# SUBWORD-TOKENIZATION
-# ------------------------------------------------------------------------
-
-def create_spm_training_file(data_path, source_lang, target_lang, output_file="spm_train.txt"):
-    train_df, _, _, max_sent_len = get_data(data_path, source_lang, target_lang)
-    source_sentences, _ = preprocess_data(train_df, source_lang, target_lang, max_sent_len, normalizeString)
-    with open(output_file, "w", encoding="utf8") as f:
-        for sentence in source_sentences:
-            f.write(sentence + "\n")
-    print(f"SPM training file created at {output_file}")
-    return output_file
-def train_sentencepiece_model(training_file, model_prefix="spm_model", vocab_size=5000, model_type="bpe"):
-    spm_args = f"--input={training_file} --model_prefix={model_prefix} --vocab_size={vocab_size} --model_type={model_type}"
-    print("Training SentencePiece model with arguments:", spm_args)
-    spm.SentencePieceTrainer.Train(spm_args)
-    print(f"SentencePiece model trained and saved with prefix '{model_prefix}'.")
-
-# if not os.path.exists("spm_model.model"):
-#     training_file = create_spm_training_file(data_path, source_lang, target_lang, output_file="spm_train.txt")
-#     train_sentencepiece_model(training_file, model_prefix="spm_model", vocab_size=5000, model_type="bpe")
-
-# # Load the trained SentencePiece model.
-# sp = spm.SentencePieceProcessor()
-# sp.Load("spm_model.model")
-# print("SentencePiece model loaded.")
-
-def sp_tokenize(sentence):
-    """
-    Tokenize a sentence into subword token IDs using SentencePiece.
-    Returns a list of token IDs.
-    """
-    return sp.EncodeAsIds(sentence)
-
-def sp_detokenize(token_ids):
-
-    return sp.DecodeIds(token_ids)
-
-def sp_tokenize_with_specials(sentence, max_length=MAX_SENT_LEN):
-
-    token_ids = sp_tokenize(sentence)
-    token_ids = [SOS_TOKEN] + token_ids + [EOS_TOKEN]
-    if len(token_ids) < max_length:
-        token_ids += [PAD_TOKEN] * (max_length - len(token_ids))
-    else:
-        token_ids = token_ids[:max_length]
-    return token_ids
-
-def sp_detokenize_with_specials(token_ids):
-
-    filtered_ids = [tid for tid in token_ids if tid not in (SOS_TOKEN, EOS_TOKEN, PAD_TOKEN)]
-    return sp_detokenize(filtered_ids)
