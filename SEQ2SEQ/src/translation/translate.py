@@ -26,8 +26,6 @@ def translate_sentence_gru(token_ids, input_dic, output_dic, model, device, max_
     translation_str = ' '.join(output_dic.index2word[idx] for idx in translation_tokens)
     return translation_str, predicted_tokens
 
-
-
 def translate_sentence(token_ids, input_dic, output_dic, model, device, max_len=utils.MAX_SENT_LEN):
     model.eval()
     input_tensor = torch.LongTensor(token_ids).unsqueeze(0).to(device)
@@ -41,13 +39,30 @@ def translate_sentence(token_ids, input_dic, output_dic, model, device, max_len=
         tgt_mask = model.make_target_mask(tgt_tensor)
         with torch.no_grad():
             output, _ = model.decoder(tgt_tensor, memory, tgt_mask, src_mask)
+        logits = output[0, -1]
+        sorted_indices = torch.argsort(logits, descending=True)
+        next_token = None
+        for candidate in sorted_indices:
+            candidate = candidate.item()
+            if candidate in predicted_tokens:
+                continue
+            if candidate == utils.UNK_TOKEN:
+                continue
+            if candidate == utils.SOS_TOKEN:
+                continue
+            next_token = candidate
+            break
+        if next_token is None:
+            next_token = sorted_indices[0].item()
             
-        next_token = output[0, -1].argmax(dim=-1).item()
         predicted_tokens.append(next_token)
         if next_token == utils.EOS_TOKEN:
             break
+
     translation_str = utils.detokenize(predicted_tokens, output_dic)
     return translation_str, predicted_tokens
+
+
 
 def translate_sentence_beam(token_ids, input_dic, output_dic, model, device, max_len=utils.MAX_SENT_LEN, beam_width=5):
     model.eval()
@@ -87,19 +102,28 @@ def translate_sentence_piece(token_ids, sp, model, device, max_len=utils.MAX_SEN
     src_mask = model.make_input_mask(input_tensor)
     with torch.no_grad():
         memory = model.encoder(input_tensor, src_mask)
-        
     predicted_tokens = [utils.SOS_TOKEN]
     for _ in range(max_len):
         tgt_tensor = torch.LongTensor(predicted_tokens).unsqueeze(0).to(device)
         tgt_mask = model.make_target_mask(tgt_tensor)
         with torch.no_grad():
             output, _ = model.decoder(tgt_tensor, memory, tgt_mask, src_mask)
-            
-        next_token = output[0, -1].argmax(dim=-1).item()
+        logits = output[0, -1]
+        sorted_indices = torch.argsort(logits, descending=True)
+        next_token = None
+        for candidate in sorted_indices:
+            candidate = candidate.item()
+            if candidate == utils.SOS_TOKEN or candidate == utils.UNK_TOKEN:
+                continue
+            if candidate in predicted_tokens:
+                continue
+            next_token = candidate
+            break
+        if next_token is None:
+            next_token = sorted_indices[0].item()
         predicted_tokens.append(next_token)
         if next_token == utils.EOS_TOKEN:
             break
-
-    # Use SentencePiece detokenization to convert token IDs to a sentence.
     translation_str = utils_subword.sp_detokenize_with_specials(sp, predicted_tokens)
     return translation_str, predicted_tokens
+

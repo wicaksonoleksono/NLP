@@ -50,28 +50,26 @@ def unicodeToAscii(s):
         c for c in unicodedata.normalize("NFD", s)
         if unicodedata.category(c) != 'Mn'
     )
-
-# def normalizeString(s):
-#     s = unicodeToAscii(s.lower().strip())
-#     s = re.sub(r"[^a-zA-Z0-9\s.,!?]+", "", s)
-#     s = re.sub(r"(\w)\s+([.,!?])", r"\1\2", s)
-#     s = re.sub(r"\s+", " ", s).strip()
-#     return s
-# def normalizeString(s):
-#     s = unicodeToAscii(s.lower().strip())
-#     s = re.sub(r"[^a-zA-Z ]+", " ", s)  # Remove ALL punctuation
-#     return s
-
 def normalizeString(s):
-    s = s.lower().strip()
-    s = ''.join(
-        c for c in unicodedata.normalize("NFD", s)
-        if unicodedata.category(c) != 'Mn'
-    )
-    s = re.sub(r"[^a-zA-Z'\s]+", "", s)
+    s = s.lower()
+    # Normalize to ASCII.
+    s = unicodeToAscii(s)
+    # Remove leading/trailing whitespace.
+    s = s.strip()
+    # Insert a space before punctuation marks (., !, ?) but leave apostrophes alone.
+    s = re.sub(r"([.!?])", r" \1", s)
+    # Collapse multiple spaces.
+    s = re.sub(r"\s+", " ", s)
+    # Remove spaces between a word character and an apostrophe (join them together)
+    s = re.sub(r"(\w)\s+'", r"\1'", s)
+    s = re.sub(r"'\s+(\w)", r"'\1", s)
+    # Now remove any character that is not a letter, punctuation, or an apostrophe.
+    s = re.sub(r"[^a-zA-Z.!?']+", " ", s)
     s = re.sub(r"\s+", " ", s).strip()
     return s
-# # ------------------------------------------------------------------------
+
+
+# ------------------------------------------------------------------------
 # Preprocessing CSV data
 # ------------------------------------------------------------------------
 def preprocess_data(dataframe, source_lang, target_lang, max_sent_len, normalize_fn):
