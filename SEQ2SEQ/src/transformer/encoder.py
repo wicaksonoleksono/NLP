@@ -6,7 +6,6 @@ from .attention import MultiHeadAttention
 from .pos_encode import PositionalEncoding
 from .feedforward import FeedForwardLayer
 
-
 # ########################################################################
 # # ENCODER LAYER :
 # 1. Performs Multiheaded self attention
@@ -78,3 +77,4 @@ class TransformerEncoder(nn.Module):
 		for layer in self.layers:
 			src = layer(src, mask)
 		return src
+	

@@ -14,7 +14,6 @@ class Aggregate(nn.Module):
         super(Aggregate, self).__init__()
         self.pth = pth
         self.data = data
-
     def _filter_fn(self, a, b):
         """
         Only keep rows where (text_1_lang, text_2_lang) matches (a, b) in either order.
@@ -109,5 +108,4 @@ class Aggregate(nn.Module):
                 csv_name = f"{split_name}.csv"
                 empty_df = df if df is not None else []
                 pd.DataFrame(empty_df).to_csv(os.path.join(base_path, csv_name), index=False)
-
         return base_path

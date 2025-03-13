@@ -77,6 +77,9 @@ def preprocess_data(dataframe, source_lang, target_lang, max_sent_len, normalize
             source_sentences.append(src)
             target_sentences.append(tgt)
     return source_sentences, target_sentences
+
+
+
 # ------------------------------------------------------------------------
 # Dictionary class
 # ------------------------------------------------------------------------
@@ -107,6 +110,7 @@ class Dictionary:
 # ------------------------------------------------------------------------
 # Tokenize & Detokenize
 # ------------------------------------------------------------------------
+
 def tokenize(sentence, dictionary, max_length=MAX_SENT_LEN):
     split_sentence = sentence.split()
     token = [SOS_TOKEN]

@@ -17,7 +17,7 @@ class Seq2Seq(nn.Module):
         else:
             self.bridge = None
 
-    def forward(self, src, tgt, teacher_forcing_ratio=0.5):
+    def forward(self, src, tgt, teacher_forcing_ratio=1):
         """
         src: (batch, src_len)
         tgt: (batch, tgt_len)
