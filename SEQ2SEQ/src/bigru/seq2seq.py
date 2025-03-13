@@ -26,7 +26,6 @@ class Seq2Seq(nn.Module):
         batch_size = src.shape[0]
         tgt_len = tgt.shape[1]
         output_vocab_size = self.decoder.fc_out.out_features
-
         # Tensor to hold predictions
         outputs = torch.zeros(batch_size, tgt_len, output_vocab_size).to(self.device)
         # Encode the source sequence
@@ -48,3 +47,5 @@ class Seq2Seq(nn.Module):
             top1 = output.argmax(2)
             input_token = tgt[:, t].unsqueeze(1) if teacher_force else top1
         return outputs,dec_hidden
+    
+

@@ -50,7 +50,6 @@ def unicodeToAscii(s):
         c for c in unicodedata.normalize("NFD", s)
         if unicodedata.category(c) != 'Mn'
     )
-
 def normalizeString(s):
     s = s.lower()
     s = unicodeToAscii(s)
@@ -86,19 +85,16 @@ class Dictionary:
         self.name = name
         self.word2index = {}
         self.word2count = {}
-        # The next 4 indices are reserved for PAD, SOS, EOS, UNK
         self.index2word = {
             PAD_TOKEN: "PAD",
             SOS_TOKEN: "SOS",
             EOS_TOKEN: "EOS",
             UNK_TOKEN: "UNK"
         }
-        self.n_count = 4  # so that the first 'real' word is index=4
-
+        self.n_count = 4  
     def add_sentence(self, sentence):
         for word in sentence.split():
             self.add_word(word)
-
     def add_word(self, word):
         if word not in self.word2index:
             self.word2index[word] = self.n_count

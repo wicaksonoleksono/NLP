@@ -4,17 +4,13 @@ import heapq
 import utils_subword
 def translate_sentence_gru(token_ids, input_dic, output_dic, model, device, max_len=50):
     model.eval()
-    # Encode the source sentence
     src_tensor = torch.LongTensor(token_ids).unsqueeze(0).to(device)
     with torch.no_grad():
         encoder_outputs, encoder_hidden = model.encoder(src_tensor)
-    
-    # Prepare the initial decoder hidden state (using bridge if available)
     if hasattr(model, "bridge") and model.bridge is not None:
         dec_hidden = torch.tanh(model.bridge(encoder_hidden))
     else:
         dec_hidden = encoder_hidden
-
     predicted_tokens = [utils.SOS_TOKEN]
     input_token = torch.LongTensor([utils.SOS_TOKEN]).unsqueeze(0).to(device)
     

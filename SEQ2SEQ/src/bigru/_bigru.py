@@ -1,13 +1,12 @@
 from torch import nn 
 import torch 
 # Written by @wicaksonolxn 06.03.25
-
 # Simple logic
 # Forward Layer:
 # [x₁ → x₂ → x₃ → ... → xₙ] → [h₁ᶠ → h₂ᶠ → h₃ᶠ → ... → hₙᶠ]
-
 # Backward Layer:
 # [x₁ ← x₂ ← x₃ ← ... ← xₙ] → [h₁ᵇ ← h₂ᵇ ← h₃ᵇ ← ... ← hₙᵇ]
+
 # Final representation:
 # h₁ = concat(h₁ᶠ, h₁ᵇ), 
 # h₂ = concat(h₂ᶠ, h₂ᵇ), ...,
@@ -23,7 +22,6 @@ class BiGRULayer(nn.Module):
         self.hidden_size = hidden_size
         self.num_layers = num_layers
         self.batch_first = batch_first
-        # Forward GRU
         self.gru_f = nn.GRU(
             input_size=input_size,
             hidden_size=hidden_size,
@@ -31,7 +29,6 @@ class BiGRULayer(nn.Module):
             batch_first=batch_first,
             dropout=(dropout if num_layers > 1 else 0.0)
         )
-        # Backward GRU
         self.gru_b = nn.GRU(
             input_size=input_size,
             hidden_size=hidden_size,
@@ -53,4 +50,3 @@ class BiGRULayer(nn.Module):
         # Concatenate the final hidden states (if using the top layer only)
         h = torch.cat([h_f, h_b], dim=2)  # (num_layers, batch, 2 * hidden_size)
         return out, h
-

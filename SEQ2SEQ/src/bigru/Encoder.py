@@ -24,3 +24,9 @@ class Encoder(nn.Module):
         embedded = self.dropout(self.embedding(src))  # (batch, src_len, embed_size)
         outputs, hidden = self.bigru(embedded)
         return outputs, hidden  # outputs: (batch, src_len, 2*hidden_size)
+    
+
+def forward(self, src):
+    embedded = self.dropout(self.embedding(src))  # (batch, src_len, embed_size)
+    outputs, hidden = self.bigru(embedded)
+    return outputs, hidden  # outputs: (batch, src_len, 2*hidden_size)
